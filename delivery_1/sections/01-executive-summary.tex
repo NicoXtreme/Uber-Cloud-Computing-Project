@@ -2,14 +2,96 @@
 
 % --------------------------------------------------
 % Responsible:
-% 
+% Luna Gaitán
 % --------------------------------------------------
 
 \subsection{Application Overview}
 
-% Content to be completed.
+The project consists of building a global ride-sharing platform from scratch. The system operates as a two-sided marketplace connecting riders who request transportation with drivers who provide it. The platform coordinates the complete ride lifecycle, from driver availability and ride matching to trip tracking, payment settlement, ratings, and safety support.
 
+Table~\ref{tab:platform-overview} summarizes the main characteristics and workload requirements of the platform.
+
+\begin{table}[H]
+\centering
+\caption{Platform Overview}
+\label{tab:platform-overview}
+\begin{tabular}{|p{0.28\textwidth}|p{0.62\textwidth}|}
+\hline
+\textbf{Aspect} & \textbf{Description} \\ \hline
+
+System type &
+Two-sided, geographically distributed ride-sharing marketplace. \\ \hline
+
+Main users &
+Riders, drivers, support and safety agents, and marketplace administrators. \\ \hline
+
+Core functionality &
+Driver onboarding, ride requests, real-time matching and dispatch, trip lifecycle management, tracking, dynamic pricing, payment settlement, ratings, and safety/support workflows. \\ \hline
+
+Average concurrency &
+Approximately 250,000 concurrent users. \\ \hline
+
+Peak concurrency &
+More than 500,000 concurrent users. \\ \hline
+
+Average workload &
+Approximately 45 million requests per hour. \\ \hline
+
+Peak workload &
+Up to 120 million requests per hour for approximately 3--4 hours. \\ \hline
+
+Availability &
+99.99\% annual availability. \\ \hline
+
+Latency &
+p95 response time below 500 ms for latency-sensitive operations. \\ \hline
+
+Data volume &
+20 TB initial data volume and approximately 15 TB of annual growth. \\ \hline
+
+Geographic scope &
+Global operation across multiple cities and regions. \\ \hline
+
+\end{tabular}
+\end{table}
 
 \subsection{Key Distributed Systems Challenges}
 
-% Content to be completed.
+The main challenge is coordinating a real-time marketplace in which supply and demand change continuously across geographic regions. The most relevant distributed-systems challenges are summarized in Table~\ref{tab:distributed-challenges}.
+
+\begin{table}[H]
+\centering
+\caption{Key Distributed Systems Challenges}
+\label{tab:distributed-challenges}
+\begin{tabular}{|p{0.25\textwidth}|p{0.65\textwidth}|}
+\hline
+\textbf{Challenge} & \textbf{System Requirement} \\ \hline
+
+Real-time matching &
+Driver availability and rider requests must be processed with low latency because both are time-sensitive and geographically constrained. \\ \hline
+
+Geospatial processing &
+The system must efficiently locate and evaluate nearby drivers while processing requests across many cities simultaneously. \\ \hline
+
+High-frequency telemetry &
+Active drivers periodically send location updates, producing a continuous and write-intensive workload. \\ \hline
+
+Bursty workload &
+The system must handle significant traffic variations caused by commuting periods, events, and localized demand surges. \\ \hline
+
+Consistency &
+Location and availability data prioritize freshness and availability, while trip state, payments, earnings, and settlement require stronger correctness guarantees. \\ \hline
+
+Fault tolerance &
+The platform must continue operating despite component or regional failures while protecting active trips and payment-related state. \\ \hline
+
+Scalability &
+The system must support hundreds of thousands of concurrent users and tens of millions of requests per hour while maintaining latency requirements. \\ \hline
+
+Security and safety &
+Driver verification, access control, ratings, fraud detection, and support workflows must operate as part of the platform. \\ \hline
+
+\end{tabular}
+\end{table}
+
+Overall, the platform must combine low-latency real-time processing with scalability, availability, geographic distribution, and strong correctness for critical operations. These requirements establish the foundation for the functional requirements, non-functional requirements, workload model, and subsequent architectural design.
