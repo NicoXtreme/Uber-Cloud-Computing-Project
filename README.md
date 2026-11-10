@@ -29,7 +29,29 @@ The workload analysis considers a large-scale scenario with **more than 100,000 
 
 ### Delivery 2 — Software Architecture
 
----
+The second delivery focuses on the software architecture and system design of the proposed ride-sharing platform.
+
+This delivery translates the requirements and workload model established in Delivery 1 into a distributed, event-driven architecture composed of eight independently deployable microservices. It defines service responsibilities, system interactions, API contracts, data ownership boundaries, communication patterns, and key architectural decisions to support scalability, reliability, and high availability.
+
+The proposed architecture follows a cloud-independent approach, establishing the foundation for its infrastructure mapping and deployment in AWS in the following delivery.
+
+Deliverables:
+
+System context and architecture diagrams.
+
+Software architecture and service decomposition.
+
+Service catalog, responsibilities, and API specifications.
+
+Data architecture and ownership boundaries.
+
+Synchronous and asynchronous communication design.
+
+Architecture Decision Records (ADRs).
+
+Functional and non-functional requirements traceability.
+
+Supporting references.
 
 ### Delivery 3 — Cloud Architecture & Scalability
 
