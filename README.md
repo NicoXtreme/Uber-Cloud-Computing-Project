@@ -63,10 +63,10 @@ Supporting references.
 
 ## Team
 
-* **Nicolás Francisco Ortiz Luna**
+* **Ortiz Luna Nicolás Francisco**
 * **Moreno Barragán Jhonatan David**
 * **Gaitán Castañeda Luna Valeria**
-* **Jonathan Felipe Ochoa Silva**
+* **Ochoa Silva Jonathan Felipe**
 
 ---
 
