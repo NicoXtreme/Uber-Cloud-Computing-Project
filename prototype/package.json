@@ -1,0 +1,27 @@
+{
+  "name": "@uber-prototype/monorepo",
+  "private": true,
+  "engines": {
+    "node": "^22.18.0 || >=24",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "eslint .",
+    "pretest": "npm run build",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.18.0",
+    "eslint": "^10.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.74.0"
+  }
+}
