@@ -1,0 +1,35 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/svc-01-account-and-driver"
+    },
+    {
+      "path": "./apps/svc-02-ride-request"
+    },
+    {
+      "path": "./apps/svc-03-matching-and-dispatch"
+    },
+    {
+      "path": "./apps/svc-04-trip-and-tracking"
+    },
+    {
+      "path": "./apps/svc-05-pricing-and-geospatial"
+    },
+    {
+      "path": "./apps/svc-06-payment-and-settlement"
+    },
+    {
+      "path": "./apps/svc-07-feedback-and-safety"
+    },
+    {
+      "path": "./apps/svc-08-notifications"
+    },
+    {
+      "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/shared"
+    }
+  ]
+}

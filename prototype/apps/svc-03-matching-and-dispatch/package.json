@@ -1,0 +1,13 @@
+{
+  "name": "@uber-prototype/svc-03-matching-and-dispatch",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "build": "tsc -b",
+    "start": "node --env-file-if-exists=../../.env dist/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
