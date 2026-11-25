@@ -55,7 +55,22 @@ Supporting references.
 
 ### Delivery 3 — Cloud Architecture & Scalability
 
----
+The third delivery focuses on the **AWS cloud architecture, infrastructure design, scalability, and cost estimation** of the proposed ride-sharing platform.
+
+This delivery translates the eight microservices defined in Delivery 2 into an AWS infrastructure deployed across three Availability Zones, using Amazon ECS with Fargate, RDS, DynamoDB, ElastiCache, S3, and managed networking, messaging, security, and monitoring services.
+
+The architecture includes capacity planning, Auto Scaling strategies, and a **20× workload growth analysis**, supported by monthly cost estimates generated using AWS Pricing Calculator.
+
+**Deliverables:**
+
+- AWS cloud architecture and infrastructure diagrams.
+- Compute sizing and Auto Scaling policies.
+- Networking and security design.
+- Database, storage, and caching infrastructure.
+- Messaging and asynchronous communication.
+- Monitoring, logging, and observability.
+- 20× workload growth analysis.
+- AWS cost estimation and supporting evidence.
 
 ### Delivery 4 — Prototype, Resilience & Final Architecture
 
