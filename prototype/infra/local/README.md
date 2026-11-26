@@ -47,6 +47,8 @@ The SQL creates each service database and a separate nonadministrator owner role
 
 Map the opaque API resource IDs to their corresponding storage keys. SVC-07 can namespace record types with `rating#`, `incident#` and `ticket#`. SVC-04 separates trip state from append-oriented telemetry and uses the composite telemetry key described in Delivery 3. The bootstrap creates absent tables and verifies the status, key names and key types of existing tables. Existing data is retained and an incompatible key schema fails verification.
 
+The SVC-08 table has a sparse `recipient-history` global secondary index on `recipient_id` and `history_key` (strings). Initialization adds the index to existing tables in place. Preference records have a distinct key prefix and no index attributes, so recipient history contains only message records.
+
 The AWS CLI runs in a disposable container sharing DynamoDB Local's network namespace. It calls only `http://127.0.0.1:8000` within that namespace with fixed dummy credentials and no host AWS credential mounts. DynamoDB Local does not enforce service-specific IAM, so table ownership here is a development convention.
 
 ### Redis
