@@ -1,0 +1,10 @@
+**
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!apps/
+!apps/svc-02-ride-request/
+!apps/svc-02-ride-request/package.json
+!apps/svc-02-ride-request/tsconfig.json
+!apps/svc-02-ride-request/src/
+!apps/svc-02-ride-request/src/**

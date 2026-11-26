@@ -6,8 +6,8 @@ Run these commands from `prototype/` with a Linux Docker engine and Docker Compo
 
 | Profile | Services |
 | --- | --- |
-| `minimal` | DynamoDB Local and ElasticMQ |
-| `full` | DynamoDB Local, ElasticMQ, PostgreSQL 17 with PostGIS 3.5, and Redis |
+| `minimal` | Traefik, SVC-02, DynamoDB Local, and ElasticMQ |
+| `full` | The minimal profile plus PostgreSQL 17 with PostGIS 3.5 and Redis |
 
 ```sh
 docker compose --profile minimal config -q
@@ -38,7 +38,7 @@ For a disposable test project, select a unique project name before startup. Afte
 docker compose -p d4-disposable-test --profile full down --volumes
 ```
 
-The profiles cover infrastructure. The gateway, containerized microservices, queue topology, and worker are developed separately. The full client-to-worker demonstration requires those components.
+The [gateway guide](traefik/README.md) documents the public SVC-02 routes and routing checks. The full client-to-worker demonstration also requires trusted authentication, the queue topology, and a worker.
 
 ## Standalone containers
 

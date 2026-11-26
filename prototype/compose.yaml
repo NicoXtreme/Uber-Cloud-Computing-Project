@@ -80,8 +80,39 @@ services:
       <<: *local-healthcheck
       test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:9324/?Action=ListQueues"]
 
+  svc-02:
+    build:
+      context: .
+      dockerfile: infra/local/traefik/svc-02.Dockerfile
+    profiles: [minimal, full]
+    environment:
+      HOST: "0.0.0.0"
+      SVC_02_PORT: "3002"
+      SVC_02_DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+    networks: [gateway, local]
+    depends_on:
+      dynamodb-local:
+        condition: service_healthy
+
+  traefik:
+    image: traefik:v3.8.0
+    profiles: [minimal, full]
+    ports:
+      - "127.0.0.1:${LOCAL_GATEWAY_PORT:-8080}:8080"
+    volumes:
+      - ./infra/local/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./infra/local/traefik/routes.yml:/etc/traefik/routes.yml:ro
+    networks: [gateway]
+    depends_on:
+      svc-02:
+        condition: service_started
+    healthcheck:
+      <<: *local-healthcheck
+      test: [CMD, traefik, healthcheck]
+
 networks:
   local:
+  gateway:
 
 volumes:
   postgres-data:
