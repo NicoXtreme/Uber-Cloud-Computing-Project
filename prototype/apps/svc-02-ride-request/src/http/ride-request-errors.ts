@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { RideRequestRepositoryError } from '../domain/ride-request-repository.js';
 
 type Trace = Readonly<{ requestId: string; correlationId: string }>;
-export type RideResponse = Response<unknown, { trace: Trace; riderId: string }>;
+export type RideResponse = Response<unknown, { trace: Trace; riderId: string; storageFailureStatus?: 503 }>;
 
 type ErrorDetail = Readonly<{
   path: string;
@@ -17,22 +17,36 @@ const errors = {
   401: ['UNAUTHENTICATED', 'A valid access token is required.'],
   403: ['FORBIDDEN', 'The caller lacks permission for this operation.'],
   404: ['NOT_FOUND', 'The requested resource was not found.'],
+  409: ['CONFLICT', 'The request conflicts with the current resource state.'],
   422: ['VALIDATION_FAILED', 'The request body failed validation.'],
   500: ['INTERNAL_ERROR', 'An unexpected error occurred.'],
   503: ['SERVICE_UNAVAILABLE', 'A required service is temporarily unavailable.'],
 } as const;
 
+const confirmationConflicts = {
+  QUOTE_CHANGED: 'The quote changed or expired. Look up the current request before confirming again.',
+  IDEMPOTENCY_KEY_REUSED: 'The idempotency key was already used with a different request.',
+} as const;
+
 export class RideHttpError extends Error {
-  constructor(readonly status: keyof typeof errors, readonly details?: readonly ErrorDetail[]) {
-    super(errors[status][1]);
+  constructor(
+    readonly status: keyof typeof errors,
+    readonly details?: readonly ErrorDetail[],
+    readonly confirmationConflict?: keyof typeof confirmationConflicts,
+  ) {
+    super(confirmationConflict ? confirmationConflicts[confirmationConflict] : errors[status][1]);
     this.name = 'RideHttpError';
   }
+}
+
+export function isTraceId(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9._-]{1,64}$/.test(value);
 }
 
 export function addRideTrace(request: Request, response: RideResponse, next: NextFunction): void {
   const requestId = randomUUID();
   const supplied = request.get('X-Correlation-ID');
-  const invalid = supplied !== undefined && !/^[A-Za-z0-9._-]{1,64}$/.test(supplied);
+  const invalid = supplied !== undefined && !isTraceId(supplied);
   const correlationId = invalid ? randomUUID() : (supplied ?? randomUUID());
   response.locals.trace = { requestId, correlationId };
   response.set({
@@ -56,26 +70,32 @@ const jsonErrorTypes = new Set([
   'encoding.unsupported', 'charset.unsupported',
 ]);
 
-function classify(error: unknown, method: string): RideHttpError {
+function classify(error: unknown, storageFailureStatus: 500 | 503): RideHttpError {
   if (error instanceof RideHttpError) return error;
   if ((error instanceof URIError && 'status' in error && error.status === 400) ||
       (error instanceof Error && 'type' in error && typeof error.type === 'string' && jsonErrorTypes.has(error.type))) {
     return new RideHttpError(400);
   }
-  if (error instanceof RideRequestRepositoryError && error.code === 'storage_failure' && method === 'POST') {
-    return new RideHttpError(503);
+  if (error instanceof RideRequestRepositoryError) {
+    switch (error.code) {
+      case 'not_found': return new RideHttpError(404);
+      case 'conflict': return new RideHttpError(409);
+      case 'quote_changed': return new RideHttpError(409, undefined, 'QUOTE_CHANGED');
+      case 'idempotency_key_reused': return new RideHttpError(409, undefined, 'IDEMPOTENCY_KEY_REUSED');
+      case 'storage_failure': return new RideHttpError(storageFailureStatus);
+    }
   }
   return new RideHttpError(500);
 }
 
-export function sendRideError(error: unknown, request: Request, response: RideResponse, next: NextFunction): void {
+export function sendRideError(error: unknown, _request: Request, response: RideResponse, next: NextFunction): void {
   if (response.headersSent) {
     next(error);
     return;
   }
 
-  const { status, details } = classify(error, request.method);
-  const [code, message] = errors[status];
+  const { status, details, message, confirmationConflict } = classify(error, response.locals.storageFailureStatus ?? 500);
+  const code = confirmationConflict ?? errors[status][0];
   if (status === 401) response.set('WWW-Authenticate', 'Bearer');
   response.status(status).json({
     error: { status, code, message, ...response.locals.trace, ...(details ? { details } : {}) },

@@ -30,3 +30,11 @@ The regular tests cover domain rules and transport failures using a loopback soc
 Both operations return request and correlation IDs. Malformed requests return `400` and JSON bodies that fail schema rules return `422`. A POST storage or quote failure returns `503`. A GET storage failure returns `500`, as specified by the current contract. Error responses omit internal causes.
 
 The default server rejects protected calls with `401` until a trusted bearer verifier is wired into the app. Identity comes from the verifier and can never be supplied through a request body or an identity header. The app also requires an injected quote provider for creation. The tests inject both dependencies in code and use real DynamoDB Local for the HTTP round trip. There is no environment switch for test identities or quotes.
+
+### Confirmation and cancellation
+
+- `POST /v1/ride-requests/{id}/confirm` requires `Idempotency-Key` and the current, unexpired `quoteId`. It moves an owned request from `pending_confirmation` to `searching` and returns `200`. The key is scoped to the rider and the target request's confirmation. Reusing it with the same quote replays the original response, even if the current state changes. Reusing it with a different quote returns `409 IDEMPOTENCY_KEY_REUSED`. An outdated or expired quote returns `409 QUOTE_CHANGED`.
+- `POST /v1/ride-requests/{id}/cancel` moves an owned request from `pending_confirmation` or `searching` to `cancelled` and returns `200`. The optional reason stays internal. Cancellation in any other state and competing updates return `409 CONFLICT`.
+- Both endpoints return `404` for a missing or privately owned request and `401` when authentication is unavailable. Storage failures follow the existing responses, `503` for confirmation and `500` for cancellation.
+
+The state, revision and confirmation receipt are committed in one conditional DynamoDB update. GET always returns the current state. Confirmation replay returns the original successful snapshot with fresh tracing headers. A retry with the same key can recover the original result when a response was lost. Event delivery is outside this implementation.
