@@ -14,7 +14,9 @@
     "lint": "eslint .",
     "pretest": "npm run build",
     "test": "node --test",
-    "validate:openapi": "npm run validate:openapi --workspace @uber-prototype/contracts"
+    "validate:openapi": "npm run validate:openapi --workspace @uber-prototype/contracts",
+    "db:init": "node --env-file-if-exists=.env infra/local/databases.mjs init",
+    "db:verify": "node --env-file-if-exists=.env infra/local/databases.mjs verify"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
