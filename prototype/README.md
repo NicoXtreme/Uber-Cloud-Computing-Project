@@ -53,7 +53,7 @@ The default host is `127.0.0.1`. To change the host or a port, copy `.env.exampl
 
 ## Local databases
 
-The [local database guide](infra/local/README.md) provides standalone Docker commands for PostgreSQL with PostGIS, DynamoDB Local and Redis. After starting them, run `npm run db:init` to bootstrap the local stores and `npm run db:verify` to check them.
+The [local infrastructure guide](infra/local/README.md) documents the Docker Compose `minimal` and `full` profiles and their database bootstrap commands. The guide also includes standalone Docker commands for PostgreSQL with PostGIS, DynamoDB Local and Redis.
 
 ## Collaboration
 

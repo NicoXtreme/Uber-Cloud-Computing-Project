@@ -1,0 +1,88 @@
+name: d4-local
+
+x-local-healthcheck: &local-healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 12
+  start_period: 10s
+
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    profiles: [full]
+    environment:
+      POSTGRES_PASSWORD: ${LOCAL_POSTGRES_PASSWORD:-local-postgres-only}
+    ports:
+      - "127.0.0.1:${LOCAL_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [local]
+    healthcheck:
+      <<: *local-healthcheck
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, postgres, -d, postgres]
+
+  dynamodb-local:
+    build: ./infra/local/compose/dynamodb
+    profiles: [minimal, full]
+    command: [-jar, DynamoDBLocal.jar, -sharedDb, -dbPath, ./data]
+    ports:
+      - "127.0.0.1:${LOCAL_DYNAMODB_PORT:-8000}:8000"
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    networks: [local]
+    healthcheck:
+      <<: *local-healthcheck
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - --output
+        - /dev/null
+        - --aws-sigv4
+        - aws:amz:us-east-1:dynamodb
+        - --user
+        - LocalOnly:LocalOnlySecret
+        - --header
+        - "Content-Type: application/x-amz-json-1.0"
+        - --header
+        - "X-Amz-Target: DynamoDB_20120810.ListTables"
+        - --data
+        - "{}"
+        - http://127.0.0.1:8000/
+
+  redis:
+    image: redis:7.4-alpine
+    profiles: [full]
+    environment:
+      REDISCLI_AUTH: ${LOCAL_REDIS_PASSWORD:-local-redis-only}
+    command:
+      - /bin/sh
+      - -ec
+      - exec docker-entrypoint.sh redis-server /usr/local/etc/redis/local.conf --requirepass "$$REDISCLI_AUTH"
+    ports:
+      - "127.0.0.1:${LOCAL_REDIS_PORT:-6379}:6379"
+    volumes:
+      - ./infra/local/redis/redis.conf:/usr/local/etc/redis/local.conf:ro
+    tmpfs: [/data]
+    networks: [local]
+    healthcheck:
+      <<: *local-healthcheck
+      test: [CMD-SHELL, "redis-cli -e --raw PING | grep -qx PONG"]
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.6.4
+    profiles: [minimal, full]
+    ports:
+      - "127.0.0.1:${LOCAL_ELASTICMQ_PORT:-9324}:9324"
+    networks: [local]
+    healthcheck:
+      <<: *local-healthcheck
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:9324/?Action=ListQueues"]
+
+networks:
+  local:
+
+volumes:
+  postgres-data:
+  dynamodb-data:
