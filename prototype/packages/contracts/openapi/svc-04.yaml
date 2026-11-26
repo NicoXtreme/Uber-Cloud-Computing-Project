@@ -1,0 +1,453 @@
+openapi: "3.1.0"
+info:
+  title: "Trip Management and Tracking"
+  version: "0.1.0"
+  description: "Owns trip state, driver telemetry and rider tracking."
+servers:
+  - url: "http://127.0.0.1:3004"
+    description: "Local service origin. Gateway routing is defined separately."
+security:
+  - BearerAuth: []
+paths:
+  "/v1/trips/{tripId}/pickup-confirmation":
+    post:
+      operationId: "confirmPickup"
+      summary: "Start the trip after pickup"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","driverId","riderId","status","destination"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  riderId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["en_route_to_pickup","in_progress","completed","cancelled"]
+                  destination:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/trips/{tripId}/complete":
+    post:
+      operationId: "completeTrip"
+      summary: "Complete the trip"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","driverId","riderId","status","destination"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  riderId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["en_route_to_pickup","in_progress","completed","cancelled"]
+                  destination:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+        "503":
+          $ref: "./common.yaml#/components/responses/SERVICE_UNAVAILABLE"
+  "/v1/trips/{tripId}/cancel":
+    post:
+      operationId: "cancelTrip"
+      summary: "Cancel the trip"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              properties:
+                reason:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","driverId","riderId","status","destination"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  riderId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["en_route_to_pickup","in_progress","completed","cancelled"]
+                  destination:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/trips/{tripId}/destination":
+    patch:
+      operationId: "changeDestination"
+      summary: "Change the trip destination"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["destination"]
+              properties:
+                destination:
+                  $ref: "./common.yaml#/components/schemas/Coordinate"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","driverId","riderId","status","destination"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  riderId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["en_route_to_pickup","in_progress","completed","cancelled"]
+                  destination:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/trips/{tripId}":
+    get:
+      operationId: "getTrip"
+      summary: "Get trip details"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","driverId","riderId","status","destination"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  riderId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["en_route_to_pickup","in_progress","completed","cancelled"]
+                  destination:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+              examples:
+                sample:
+                  value:
+                    id: "trip_001"
+                    driverId: "driver_1"
+                    riderId: "user_1"
+                    status: "in_progress"
+                    destination:
+                      latitude: 4.6486
+                      longitude: -74.0628
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/trips/{tripId}/locations":
+    post:
+      operationId: "recordTripLocation"
+      summary: "Record a driver location"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["position","recordedAt"]
+              properties:
+                position:
+                  $ref: "./common.yaml#/components/schemas/Coordinate"
+                recordedAt:
+                  type: "string"
+                  format: "date-time"
+      responses:
+        "204":
+          description: "Operation completed."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/trips/{tripId}/location":
+    get:
+      operationId: "getTripLocation"
+      summary: "Get the latest location"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["position","recordedAt"]
+                properties:
+                  position:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+                  recordedAt:
+                    type: "string"
+                    format: "date-time"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/trips/{tripId}/route":
+    get:
+      operationId: "getTripRoute"
+      summary: "Get route history"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+        - $ref: "./common.yaml#/components/parameters/Limit"
+        - $ref: "./common.yaml#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["items","page"]
+                properties:
+                  items:
+                    type: "array"
+                    items:
+                      type: "object"
+                      required: ["position","recordedAt"]
+                      properties:
+                        position:
+                          $ref: "./common.yaml#/components/schemas/Coordinate"
+                        recordedAt:
+                          type: "string"
+                          format: "date-time"
+                  page:
+                    $ref: "./common.yaml#/components/schemas/Page"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "./common.yaml#/components/securitySchemes/BearerAuth"
+x-websocket-endpoints:
+  - path: "/v1/trips/{tripId}/stream"
+    description: "Authenticated WebSocket stream for the rider's real-time trip progress."

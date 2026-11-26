@@ -1,0 +1,452 @@
+components:
+  schemas:
+    ResourceId:
+      type: "string"
+      description: "Opaque, case-sensitive resource identifier."
+      minLength: 1
+      maxLength: 128
+      pattern: "^[A-Za-z0-9_-]+$"
+    TraceId:
+      type: "string"
+      minLength: 1
+      maxLength: 64
+      pattern: "^[A-Za-z0-9._-]+$"
+    Coordinate:
+      type: "object"
+      additionalProperties: false
+      required: ["latitude","longitude"]
+      properties:
+        latitude:
+          type: "number"
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: "number"
+          minimum: -180
+          maximum: 180
+    ServiceType:
+      type: "string"
+      description: "Requested ride tier."
+      enum: ["standard","premium","xl"]
+    Money:
+      type: "object"
+      required: ["amountMinor","currency"]
+      properties:
+        amountMinor:
+          type: "integer"
+          minimum: 0
+        currency:
+          type: "string"
+          pattern: "^[A-Z]{3}$"
+          description: "ISO 4217 currency code."
+    ErrorResponse:
+      type: "object"
+      required: ["error"]
+      properties:
+        error:
+          type: "object"
+          required: ["status","code","message","requestId","correlationId"]
+          properties:
+            status:
+              type: "integer"
+              minimum: 400
+              maximum: 599
+            code:
+              type: "string"
+              pattern: "^[A-Z][A-Z0-9_]*$"
+            message:
+              type: "string"
+              minLength: 1
+              maxLength: 1000
+            requestId:
+              $ref: "./common.yaml#/components/schemas/TraceId"
+            correlationId:
+              $ref: "./common.yaml#/components/schemas/TraceId"
+            details:
+              type: "array"
+              items:
+                type: "object"
+                required: ["path","location","code","message"]
+                properties:
+                  path:
+                    type: "string"
+                    description: "JSON Pointer for body fields, or the parameter name."
+                  location:
+                    type: "string"
+                    enum: ["body","path","query","header"]
+                  code:
+                    type: "string"
+                    pattern: "^[A-Z][A-Z0-9_]*$"
+                  message:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+    Page:
+      type: "object"
+      required: ["nextCursor"]
+      properties:
+        nextCursor:
+          type: ["string","null"]
+          minLength: 1
+          description: "Opaque cursor. Null means the last page."
+  securitySchemes:
+    BearerAuth:
+      type: "http"
+      scheme: "bearer"
+      bearerFormat: "JWT"
+      description: "JWT for the audience defined by this operation. Internal operations require a service identity."
+  parameters:
+    CorrelationId:
+      name: "X-Correlation-ID"
+      in: "header"
+      description: "Client correlation ID. The gateway assigns one when it is absent."
+      schema:
+        $ref: "./common.yaml#/components/schemas/TraceId"
+    IdempotencyKey:
+      name: "Idempotency-Key"
+      in: "header"
+      required: true
+      description: "Replay the same result for the same caller, operation and payload. Reusing the key with a different payload returns 409."
+      schema:
+        $ref: "./common.yaml#/components/schemas/TraceId"
+    Limit:
+      name: "limit"
+      in: "query"
+      description: "Maximum number of items on this page."
+      schema:
+        type: "integer"
+        minimum: 1
+        maximum: 100
+        default: 20
+    Cursor:
+      name: "cursor"
+      in: "query"
+      description: "Opaque cursor from the previous response."
+      schema:
+        type: "string"
+        minLength: 1
+        maxLength: 2048
+  headers:
+    RequestId:
+      description: "Identifier generated for this HTTP attempt."
+      required: true
+      schema:
+        $ref: "./common.yaml#/components/schemas/TraceId"
+    CorrelationId:
+      description: "Correlation ID propagated across the request flow."
+      required: true
+      schema:
+        $ref: "./common.yaml#/components/schemas/TraceId"
+  responses:
+    BAD_REQUEST:
+      description: "The request is malformed or a parameter is invalid."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status"]
+                    properties:
+                      code:
+                        const: "BAD_REQUEST"
+                      status:
+                        const: 400
+          examples:
+            sample:
+              value:
+                error:
+                  status: 400
+                  code: "BAD_REQUEST"
+                  message: "The request is malformed or a parameter is invalid."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"
+    UNAUTHENTICATED:
+      description: "A valid access token is required."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+        WWW-Authenticate:
+          description: "Bearer authentication challenge."
+          required: true
+          schema:
+            type: "string"
+            example: "Bearer"
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status"]
+                    properties:
+                      code:
+                        const: "UNAUTHENTICATED"
+                      status:
+                        const: 401
+          examples:
+            sample:
+              value:
+                error:
+                  status: 401
+                  code: "UNAUTHENTICATED"
+                  message: "A valid access token is required."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"
+    FORBIDDEN:
+      description: "The caller lacks permission for this operation."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status"]
+                    properties:
+                      code:
+                        const: "FORBIDDEN"
+                      status:
+                        const: 403
+          examples:
+            sample:
+              value:
+                error:
+                  status: 403
+                  code: "FORBIDDEN"
+                  message: "The caller lacks permission for this operation."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"
+    NOT_FOUND:
+      description: "The requested resource was not found."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status"]
+                    properties:
+                      code:
+                        const: "NOT_FOUND"
+                      status:
+                        const: 404
+          examples:
+            sample:
+              value:
+                error:
+                  status: 404
+                  code: "NOT_FOUND"
+                  message: "The requested resource was not found."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"
+    CONFLICT:
+      description: "The request conflicts with the current resource state."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status"]
+                    properties:
+                      code:
+                        const: "CONFLICT"
+                      status:
+                        const: 409
+          examples:
+            sample:
+              value:
+                error:
+                  status: 409
+                  code: "CONFLICT"
+                  message: "The request conflicts with the current resource state."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"
+    VALIDATION_FAILED:
+      description: "The request body failed validation."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status","details"]
+                    properties:
+                      code:
+                        const: "VALIDATION_FAILED"
+                      status:
+                        const: 422
+                      details:
+                        type: "array"
+                        minItems: 1
+          examples:
+            sample:
+              value:
+                error:
+                  status: 422
+                  code: "VALIDATION_FAILED"
+                  message: "The request body failed validation."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"
+                  details:
+                    - path: "/field"
+                      location: "body"
+                      code: "INVALID_VALUE"
+                      message: "The field contains an invalid value."
+    RATE_LIMITED:
+      description: "The request rate limit was exceeded."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+        Retry-After:
+          description: "Seconds before retrying, when known."
+          schema:
+            type: "integer"
+            minimum: 0
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status"]
+                    properties:
+                      code:
+                        const: "RATE_LIMITED"
+                      status:
+                        const: 429
+          examples:
+            sample:
+              value:
+                error:
+                  status: 429
+                  code: "RATE_LIMITED"
+                  message: "The request rate limit was exceeded."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"
+    INTERNAL_ERROR:
+      description: "An unexpected error occurred."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status"]
+                    properties:
+                      code:
+                        const: "INTERNAL_ERROR"
+                      status:
+                        const: 500
+          examples:
+            sample:
+              value:
+                error:
+                  status: 500
+                  code: "INTERNAL_ERROR"
+                  message: "An unexpected error occurred."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"
+    SERVICE_UNAVAILABLE:
+      description: "A required service is temporarily unavailable."
+      headers:
+        X-Request-ID:
+          $ref: "./common.yaml#/components/headers/RequestId"
+        X-Correlation-ID:
+          $ref: "./common.yaml#/components/headers/CorrelationId"
+        Retry-After:
+          description: "Seconds before retrying, when known."
+          schema:
+            type: "integer"
+            minimum: 0
+      content:
+        "application/json":
+          schema:
+            allOf:
+              - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+              - type: "object"
+                required: ["error"]
+                properties:
+                  error:
+                    type: "object"
+                    required: ["code","status"]
+                    properties:
+                      code:
+                        const: "SERVICE_UNAVAILABLE"
+                      status:
+                        const: 503
+          examples:
+            sample:
+              value:
+                error:
+                  status: 503
+                  code: "SERVICE_UNAVAILABLE"
+                  message: "A required service is temporarily unavailable."
+                  requestId: "req-001"
+                  correlationId: "demo-ride-001"

@@ -1,0 +1,456 @@
+openapi: "3.1.0"
+info:
+  title: "Pricing and Geospatial"
+  version: "0.1.0"
+  description: "Owns fare estimates, final fares, surge and service areas."
+servers:
+  - url: "http://127.0.0.1:3005"
+    description: "Local service origin. Gateway routing is defined separately."
+security:
+  - BearerAuth: []
+paths:
+  "/v1/estimates":
+    get:
+      operationId: "estimateFare"
+      summary: "Estimate fare and ETA"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "pickupLat"
+          in: "query"
+          required: true
+          description: "Pickup latitude."
+          schema:
+            type: "number"
+            minimum: -90
+            maximum: 90
+        - name: "pickupLng"
+          in: "query"
+          required: true
+          description: "Pickup longitude."
+          schema:
+            type: "number"
+            minimum: -180
+            maximum: 180
+        - name: "destinationLat"
+          in: "query"
+          required: true
+          description: "Destination latitude."
+          schema:
+            type: "number"
+            minimum: -90
+            maximum: 90
+        - name: "destinationLng"
+          in: "query"
+          required: true
+          description: "Destination longitude."
+          schema:
+            type: "number"
+            minimum: -180
+            maximum: 180
+        - name: "serviceType"
+          in: "query"
+          required: true
+          description: "Requested ride tier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ServiceType"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["quoteId","fare","etaSeconds","expiresAt"]
+                properties:
+                  quoteId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  fare:
+                    $ref: "./common.yaml#/components/schemas/Money"
+                  etaSeconds:
+                    type: "integer"
+                    minimum: 0
+                  expiresAt:
+                    type: "string"
+                    format: "date-time"
+              examples:
+                sample:
+                  value:
+                    quoteId: "quote_001"
+                    fare:
+                      amountMinor: 1870000
+                      currency: "COP"
+                    etaSeconds: 420
+                    expiresAt: "2026-11-25T14:05:00Z"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/fares/final":
+    post:
+      operationId: "calculateFinalFare"
+      summary: "Calculate the final fare for a completed trip"
+      description: "Requires a service JWT. Called by SVC-04."
+      x-access: "internal"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["tripId","distanceMeters","durationSeconds","serviceType"]
+              properties:
+                tripId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                distanceMeters:
+                  type: "integer"
+                  minimum: 0
+                durationSeconds:
+                  type: "integer"
+                  minimum: 0
+                serviceType:
+                  $ref: "./common.yaml#/components/schemas/ServiceType"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["fare","surgeMultiplier"]
+                properties:
+                  fare:
+                    $ref: "./common.yaml#/components/schemas/Money"
+                  surgeMultiplier:
+                    type: "number"
+                    minimum: 1
+                    maximum: 10
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/surge":
+    get:
+      operationId: "getSurge"
+      summary: "Get the current surge multiplier for a location"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "latitude"
+          in: "query"
+          required: true
+          description: "Latitude in decimal degrees."
+          schema:
+            type: "number"
+            minimum: -90
+            maximum: 90
+        - name: "longitude"
+          in: "query"
+          required: true
+          description: "Longitude in decimal degrees."
+          schema:
+            type: "number"
+            minimum: -180
+            maximum: 180
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["multiplier"]
+                properties:
+                  multiplier:
+                    type: "number"
+                    minimum: 1
+                    maximum: 10
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/geofences/resolve":
+    get:
+      operationId: "resolveGeofence"
+      summary: "Resolve the service area at a coordinate"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "latitude"
+          in: "query"
+          required: true
+          description: "Latitude in decimal degrees."
+          schema:
+            type: "number"
+            minimum: -90
+            maximum: 90
+        - name: "longitude"
+          in: "query"
+          required: true
+          description: "Longitude in decimal degrees."
+          schema:
+            type: "number"
+            minimum: -180
+            maximum: 180
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["geofenceId","marketId"]
+                properties:
+                  geofenceId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  marketId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/admin/pricing-rules/{ruleId}":
+    put:
+      operationId: "putPricingRule"
+      summary: "Replace a market pricing rule"
+      x-access: "admin"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "ruleId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["marketId","serviceType","baseFare","perKilometer","perMinute"]
+              properties:
+                marketId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                serviceType:
+                  $ref: "./common.yaml#/components/schemas/ServiceType"
+                baseFare:
+                  $ref: "./common.yaml#/components/schemas/Money"
+                perKilometer:
+                  $ref: "./common.yaml#/components/schemas/Money"
+                perMinute:
+                  $ref: "./common.yaml#/components/schemas/Money"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["marketId","serviceType","baseFare","perKilometer","perMinute"]
+                properties:
+                  marketId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  serviceType:
+                    $ref: "./common.yaml#/components/schemas/ServiceType"
+                  baseFare:
+                    $ref: "./common.yaml#/components/schemas/Money"
+                  perKilometer:
+                    $ref: "./common.yaml#/components/schemas/Money"
+                  perMinute:
+                    $ref: "./common.yaml#/components/schemas/Money"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/admin/geofences":
+    post:
+      operationId: "createGeofence"
+      summary: "Create a service area"
+      x-access: "admin"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["marketId","vertices"]
+              properties:
+                id:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                marketId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                vertices:
+                  type: "array"
+                  items:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+                  minItems: 3
+      responses:
+        "201":
+          description: "Resource created."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","marketId","vertices"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  marketId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  vertices:
+                    type: "array"
+                    items:
+                      $ref: "./common.yaml#/components/schemas/Coordinate"
+                    minItems: 3
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+    put:
+      operationId: "replaceGeofence"
+      summary: "Replace the service area identified by the body"
+      x-access: "admin"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["id","marketId","vertices"]
+              properties:
+                id:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                marketId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                vertices:
+                  type: "array"
+                  items:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+                  minItems: 3
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","marketId","vertices"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  marketId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  vertices:
+                    type: "array"
+                    items:
+                      $ref: "./common.yaml#/components/schemas/Coordinate"
+                    minItems: 3
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "./common.yaml#/components/securitySchemes/BearerAuth"

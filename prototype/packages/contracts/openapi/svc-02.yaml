@@ -1,0 +1,449 @@
+openapi: "3.1.0"
+info:
+  title: "Ride Request Management"
+  version: "0.1.0"
+  description: "Owns a rider's request from the initial quote through confirmation and hand-off to matching."
+servers:
+  - url: "http://127.0.0.1:3002"
+    description: "Local service origin. Gateway routing is defined separately."
+security:
+  - BearerAuth: []
+paths:
+  "/v1/ride-requests":
+    post:
+      operationId: "createRideRequest"
+      summary: "Create a ride request and return its quote"
+      description: "SVC-05 supplies the fare and ETA. The request remains pending confirmation and SVC-02 publishes RideRequested after confirmation."
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/CreateRideRequest"
+            examples:
+              sample:
+                value:
+                  pickup:
+                    latitude: 4.6097
+                    longitude: -74.0817
+                  destination:
+                    latitude: 4.6486
+                    longitude: -74.0628
+                  serviceType: "standard"
+      responses:
+        "201":
+          description: "Resource created."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+            Location:
+              description: "Relative URI of the created resource."
+              required: true
+              example: "/v1/ride-requests/ride_001"
+              schema:
+                type: "string"
+                format: "uri-reference"
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/RideRequest"
+              examples:
+                sample:
+                  value:
+                    id: "ride_001"
+                    pickup:
+                      latitude: 4.6097
+                      longitude: -74.0817
+                    destination:
+                      latitude: 4.6486
+                      longitude: -74.0628
+                    serviceType: "standard"
+                    quote:
+                      id: "quote_001"
+                      fare:
+                        amountMinor: 1870000
+                        currency: "COP"
+                      etaSeconds: 420
+                      expiresAt: "2026-11-25T14:05:00Z"
+                    status: "pending_confirmation"
+                    createdAt: "2026-11-25T14:00:00Z"
+                    updatedAt: "2026-11-25T14:00:00Z"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "422":
+          description: "The request body failed validation."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                allOf:
+                  - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+                  - type: "object"
+                    required: ["error"]
+                    properties:
+                      error:
+                        type: "object"
+                        required: ["code","status","details"]
+                        properties:
+                          code:
+                            const: "VALIDATION_FAILED"
+                          status:
+                            const: 422
+                          details:
+                            type: "array"
+                            minItems: 1
+              examples:
+                sample:
+                  value:
+                    error:
+                      status: 422
+                      code: "VALIDATION_FAILED"
+                      message: "The request body failed validation."
+                      requestId: "req-001"
+                      correlationId: "demo-ride-001"
+                      details:
+                        - path: "/pickup/latitude"
+                          location: "body"
+                          code: "OUT_OF_RANGE"
+                          message: "Latitude must be between -90 and 90."
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+        "503":
+          $ref: "./common.yaml#/components/responses/SERVICE_UNAVAILABLE"
+  "/v1/ride-requests/{id}":
+    get:
+      operationId: "getRideRequest"
+      summary: "Look up a ride request by ID"
+      description: "Returns the authenticated rider's request and its current status. A request outside the caller's ownership is treated as not found."
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/RideRequest"
+              examples:
+                sample:
+                  value:
+                    id: "ride_001"
+                    pickup:
+                      latitude: 4.6097
+                      longitude: -74.0817
+                    destination:
+                      latitude: 4.6486
+                      longitude: -74.0628
+                    serviceType: "standard"
+                    quote:
+                      id: "quote_001"
+                      fare:
+                        amountMinor: 1870000
+                        currency: "COP"
+                      etaSeconds: 420
+                      expiresAt: "2026-11-25T14:05:00Z"
+                    status: "matched"
+                    createdAt: "2026-11-25T14:00:00Z"
+                    updatedAt: "2026-11-25T14:02:00Z"
+                    tripId: "trip_001"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/ride-requests/{id}/confirm":
+    post:
+      operationId: "confirmRideRequest"
+      summary: "Confirm the quoted ride"
+      description: "The rider accepts the current quote. An accepted transition to searching publishes RideRequested. If the quote changes or expires, look up the current request and confirm its refreshed quote with a new idempotency key."
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+        - $ref: "./common.yaml#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/ConfirmRideRequest"
+            examples:
+              sample:
+                value:
+                  quoteId: "quote_001"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/RideRequest"
+              examples:
+                sample:
+                  value:
+                    id: "ride_001"
+                    pickup:
+                      latitude: 4.6097
+                      longitude: -74.0817
+                    destination:
+                      latitude: 4.6486
+                      longitude: -74.0628
+                    serviceType: "standard"
+                    quote:
+                      id: "quote_001"
+                      fare:
+                        amountMinor: 1870000
+                        currency: "COP"
+                      etaSeconds: 420
+                      expiresAt: "2026-11-25T14:05:00Z"
+                    status: "searching"
+                    createdAt: "2026-11-25T14:00:00Z"
+                    updatedAt: "2026-11-25T14:01:00Z"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          description: "The request or quote changed. Look up the current request before confirming again."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                allOf:
+                  - $ref: "./common.yaml#/components/schemas/ErrorResponse"
+                  - type: "object"
+                    required: ["error"]
+                    properties:
+                      error:
+                        type: "object"
+                        required: ["code","status"]
+                        properties:
+                          code:
+                            type: "string"
+                            enum: ["CONFLICT","QUOTE_CHANGED","IDEMPOTENCY_KEY_REUSED"]
+                          status:
+                            const: 409
+              examples:
+                sample:
+                  value:
+                    error:
+                      status: 409
+                      code: "CONFLICT"
+                      message: "The request or quote changed. Look up the current request before confirming again."
+                      requestId: "req-001"
+                      correlationId: "demo-ride-001"
+                quoteChanged:
+                  value:
+                    error:
+                      status: 409
+                      code: "QUOTE_CHANGED"
+                      message: "Surge changed. Look up and confirm the refreshed quote."
+                      requestId: "req-002"
+                      correlationId: "demo-ride-001"
+                keyReused:
+                  value:
+                    error:
+                      status: 409
+                      code: "IDEMPOTENCY_KEY_REUSED"
+                      message: "The idempotency key was already used with a different request."
+                      requestId: "req-003"
+                      correlationId: "demo-ride-001"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+        "503":
+          $ref: "./common.yaml#/components/responses/SERVICE_UNAVAILABLE"
+  "/v1/ride-requests/{id}/cancel":
+    post:
+      operationId: "cancelRideRequest"
+      summary: "Cancel a ride request before pickup"
+      description: "A cancelled request transitions to cancelled and publishes RideRequestCancelled."
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/CancelRideRequest"
+            examples:
+              sample:
+                value:
+                  reason: "Plans changed"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/RideRequest"
+              examples:
+                sample:
+                  value:
+                    id: "ride_001"
+                    pickup:
+                      latitude: 4.6097
+                      longitude: -74.0817
+                    destination:
+                      latitude: 4.6486
+                      longitude: -74.0628
+                    serviceType: "standard"
+                    quote:
+                      id: "quote_001"
+                      fare:
+                        amountMinor: 1870000
+                        currency: "COP"
+                      etaSeconds: 420
+                      expiresAt: "2026-11-25T14:05:00Z"
+                    status: "cancelled"
+                    createdAt: "2026-11-25T14:00:00Z"
+                    updatedAt: "2026-11-25T14:03:00Z"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "./common.yaml#/components/securitySchemes/BearerAuth"
+  schemas:
+    CreateRideRequest:
+      type: "object"
+      additionalProperties: false
+      required: ["pickup","destination","serviceType"]
+      properties:
+        pickup:
+          $ref: "./common.yaml#/components/schemas/Coordinate"
+        destination:
+          $ref: "./common.yaml#/components/schemas/Coordinate"
+        serviceType:
+          $ref: "./common.yaml#/components/schemas/ServiceType"
+    Quote:
+      type: "object"
+      required: ["id","fare","etaSeconds","expiresAt"]
+      properties:
+        id:
+          $ref: "./common.yaml#/components/schemas/ResourceId"
+        fare:
+          $ref: "./common.yaml#/components/schemas/Money"
+        etaSeconds:
+          type: "integer"
+          minimum: 0
+        expiresAt:
+          type: "string"
+          format: "date-time"
+    RideRequest:
+      type: "object"
+      required: ["id","pickup","destination","serviceType","quote","status","createdAt","updatedAt"]
+      properties:
+        id:
+          $ref: "./common.yaml#/components/schemas/ResourceId"
+        pickup:
+          $ref: "./common.yaml#/components/schemas/Coordinate"
+        destination:
+          $ref: "./common.yaml#/components/schemas/Coordinate"
+        serviceType:
+          $ref: "./common.yaml#/components/schemas/ServiceType"
+        quote:
+          $ref: "#/components/schemas/Quote"
+        status:
+          type: "string"
+          enum: ["pending_confirmation","searching","matched","no_driver_found","cancelled","expired"]
+        createdAt:
+          type: "string"
+          format: "date-time"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+        tripId:
+          $ref: "./common.yaml#/components/schemas/ResourceId"
+    ConfirmRideRequest:
+      type: "object"
+      additionalProperties: false
+      required: ["quoteId"]
+      properties:
+        quoteId:
+          $ref: "./common.yaml#/components/schemas/ResourceId"
+    CancelRideRequest:
+      type: "object"
+      additionalProperties: false
+      properties:
+        reason:
+          type: "string"
+          minLength: 1
+          maxLength: 250
