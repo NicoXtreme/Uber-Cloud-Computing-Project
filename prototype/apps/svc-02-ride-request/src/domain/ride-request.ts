@@ -45,7 +45,7 @@ const transitions: Readonly<Record<RideRequestStatus, readonly RideRequestStatus
 };
 
 export class RideRequestDomainError extends Error {
-  constructor(message: string) {
+  constructor(message: string, readonly code: 'invalid_request' | 'quote_changed' = 'invalid_request') {
     super(message);
     this.name = 'RideRequestDomainError';
   }
@@ -184,7 +184,7 @@ export function transitionRideRequest(
 
   const quoteExpired = now.getTime() >= Date.parse(request.quote.expiresAt);
   if (change.status === 'searching' && (quoteExpired || change.quoteId !== request.quote.id)) {
-    throw new RideRequestDomainError('Confirmation requires the current, unexpired quote.');
+    throw new RideRequestDomainError('Confirmation requires the current, unexpired quote.', 'quote_changed');
   }
   if (change.status === 'expired' && !quoteExpired) {
     throw new RideRequestDomainError('The quote is still valid.');

@@ -1,6 +1,6 @@
 import { resourceId, serviceTypes } from '../domain/ride-request.js';
 import type { NewRideRequest } from '../domain/ride-request.js';
-import { RideHttpError } from './ride-request-errors.js';
+import { isTraceId, RideHttpError } from './ride-request-errors.js';
 
 export type RideInput = Pick<NewRideRequest, 'pickup' | 'destination' | 'serviceType'>;
 
@@ -53,4 +53,30 @@ export function readRideId(value: unknown): string {
       message: 'A valid ride request identifier is required.',
     }]);
   }
+}
+
+export function readConfirmation(body: unknown): string {
+  const { quoteId } = object(body, '', ['quoteId']);
+  try {
+    return resourceId(quoteId, 'quoteId');
+  } catch {
+    return invalid('/quoteId', 'INVALID_VALUE', 'A valid quote identifier is required.');
+  }
+}
+
+export function readIdempotencyKey(value: unknown): string {
+  if (isTraceId(value)) return value;
+  throw new RideHttpError(400, [{
+    path: 'Idempotency-Key', location: 'header', code: 'INVALID_VALUE',
+    message: 'An idempotency key of 1 to 64 allowed characters is required.',
+  }]);
+}
+
+export function readCancellation(body: unknown): string | undefined {
+  const { reason } = object(body, '', ['reason']);
+  if (reason === undefined) return undefined;
+  if (typeof reason !== 'string' || reason.length === 0 || [...reason].length > 250) {
+    return invalid('/reason', 'INVALID_VALUE', 'The reason must contain 1 to 250 characters.');
+  }
+  return reason;
 }

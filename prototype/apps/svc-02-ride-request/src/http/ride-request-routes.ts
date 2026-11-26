@@ -6,7 +6,7 @@ import { resourceId, RideRequestDomainError } from '../domain/ride-request.js';
 import type { NewRideRequest, RideRequest } from '../domain/ride-request.js';
 import { addRideTrace, RideHttpError, sendRideError } from './ride-request-errors.js';
 import type { RideResponse } from './ride-request-errors.js';
-import { readRideId, readRideInput } from './ride-request-input.js';
+import { readCancellation, readConfirmation, readIdempotencyKey, readRideId, readRideInput } from './ride-request-input.js';
 import type { RideInput } from './ride-request-input.js';
 
 export const rideRequestsPath = '/v1/ride-requests';
@@ -14,7 +14,7 @@ export const rideRequestsPath = '/v1/ride-requests';
 type VerifiedPrincipal = Readonly<{ subject: string; role: string }>;
 
 export type RideRoutesDependencies = Readonly<{
-  repository: Pick<RideRequestRepository, 'create' | 'findById'>;
+  repository: Pick<RideRequestRepository, 'create' | 'findById' | 'confirm' | 'cancel'>;
   verifyBearerToken?: (token: string) => Promise<VerifiedPrincipal | null>;
   getQuote?: (input: RideInput, correlationId: string) => Promise<NewRideRequest['quote']>;
 }>;
@@ -40,11 +40,16 @@ export function createRideRequestRouter({ repository, verifyBearerToken, getQuot
     next();
   }
 
-  router.use(addRideTrace);
-  router.post('/', requireRider, parseJson, async (request: Request, response: RideResponse) => {
+  function requireJson(request: Request, _response: RideResponse, next: NextFunction): void {
     if (!request.is('application/json')) throw new RideHttpError(400);
+    next();
+  }
 
+  const authenticatedJson = [requireRider, requireJson, parseJson] as const;
+  router.use(addRideTrace);
+  router.post('/', ...authenticatedJson, async (request: Request, response: RideResponse) => {
     const input = readRideInput(request.body);
+    response.locals.storageFailureStatus = 503;
     if (!getQuote) throw new RideHttpError(503);
 
     let quote: NewRideRequest['quote'];
@@ -69,6 +74,22 @@ export function createRideRequestRouter({ repository, verifyBearerToken, getQuot
   router.get('/:id', requireRider, async (request: Request<{ id: string }>, response: RideResponse) => {
     const stored = await repository.findById(readRideId(request.params.id));
     if (!stored || stored.riderId !== response.locals.riderId) throw new RideHttpError(404);
+    response.status(200).json(serialize(stored));
+  });
+
+  router.post('/:id/confirm', ...authenticatedJson, async (request: Request<{ id: string }>, response: RideResponse) => {
+    const id = readRideId(request.params.id);
+    const key = readIdempotencyKey(request.get('Idempotency-Key'));
+    const quoteId = readConfirmation(request.body);
+    response.locals.storageFailureStatus = 503;
+    const stored = await repository.confirm(id, response.locals.riderId, quoteId, key);
+    response.status(200).json(serialize(stored));
+  });
+
+  router.post('/:id/cancel', ...authenticatedJson, async (request: Request<{ id: string }>, response: RideResponse) => {
+    const id = readRideId(request.params.id);
+    const reason = readCancellation(request.body);
+    const stored = await repository.cancel(id, response.locals.riderId, reason);
     response.status(200).json(serialize(stored));
   });
 

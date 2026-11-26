@@ -8,6 +8,8 @@ export const rideRequestsPath = '/v1/ride-requests';
 const contract = await loadContract('svc-02');
 export const creation = contract.paths[rideRequestsPath].post;
 export const lookup = contract.paths[`${rideRequestsPath}/{id}`].get;
+export const confirmation = contract.paths[`${rideRequestsPath}/{id}/confirm`].post;
+export const cancellation = contract.paths[`${rideRequestsPath}/{id}/cancel`].post;
 export const rideInput = creation.requestBody.content['application/json'].examples.sample.value;
 
 export const riderHeaders = Object.freeze({ Authorization: 'Bearer rider-one-test-token' });
@@ -33,8 +35,8 @@ export async function listen(t, app) {
   return `http://127.0.0.1:${server.address().port}`;
 }
 
-export function post(origin, body = rideInput, headers = {}) {
-  return globalThis.fetch(`${origin}${rideRequestsPath}`, {
+export function post(origin, body = rideInput, headers = {}, path = rideRequestsPath) {
+  return globalThis.fetch(`${origin}${path}`, {
     method: 'POST',
     headers: { ...riderHeaders, 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),

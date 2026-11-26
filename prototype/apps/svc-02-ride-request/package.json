@@ -6,7 +6,7 @@
     "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
     "build": "tsc -b",
     "start": "node --env-file-if-exists=../../.env dist/server.js",
-    "test:integration": "npm run build && node --env-file-if-exists=../../.env --test integration/dynamodb.mjs integration/http.mjs"
+    "test:integration": "npm run build && node --env-file-if-exists=../../.env --test integration/dynamodb.mjs integration/http.mjs integration/transitions.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1178.0",
