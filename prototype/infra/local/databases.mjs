@@ -41,6 +41,14 @@ function exec(container, command, { input, env = {} } = {}) {
   return docker(['exec', ...(input === undefined ? [] : ['-i']), ...options, container, ...command], { input, env });
 }
 
+function resolveContainer(service, manualName) {
+  const container = useCompose ? docker(['compose', '--profile', '*', 'ps', '-q', service]) : manualName;
+  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(container)) {
+    throw new Error(`Expected one running container for ${service}. Start the correct profile or check the configured container name.`);
+  }
+  return container;
+}
+
 async function waitFor(check, description) {
   for (let attempt = 1; attempt <= 20; attempt += 1) {
     try {
@@ -52,8 +60,8 @@ async function waitFor(check, description) {
   }
 }
 
-function psql({ user, database, password, script, flags = [], env = {} }) {
-  return exec(postgres, [
+function psql(container, { user, database, password, script, flags = [], env = {} }) {
+  return exec(container, [
     'psql', '-X', '-w', '--host', '127.0.0.1', '--username', user, '--dbname', database,
     '--set', 'ON_ERROR_STOP=1', ...flags, '--file', '-',
   ], {
@@ -63,14 +71,15 @@ function psql({ user, database, password, script, flags = [], env = {} }) {
 }
 
 async function postgresAction(action) {
+  const container = resolveContainer('postgres', postgres);
   await waitFor(
-    () => exec(postgres, ['pg_isready', '-h', '127.0.0.1', '-U', 'postgres', '-d', 'postgres']),
+    () => exec(container, ['pg_isready', '-h', '127.0.0.1', '-U', 'postgres', '-d', 'postgres']),
     'PostgreSQL is not ready',
   );
 
   if (action === 'init') {
     const admin = { user: 'postgres', password: adminPassword };
-    globalThis.console.log(psql({
+    globalThis.console.log(psql(container, {
       ...admin,
       database: 'postgres',
       script: './postgres/init.sql',
@@ -80,7 +89,7 @@ async function postgresAction(action) {
         LOCAL_SVC_06_PASSWORD: servicePasswords.svc_06,
       },
     }));
-    globalThis.console.log(psql({
+    globalThis.console.log(psql(container, {
       ...admin,
       database: 'svc_05',
       script: './postgres/enable-postgis.sql',
@@ -89,7 +98,7 @@ async function postgresAction(action) {
   }
 
   for (const [service, password] of Object.entries(servicePasswords)) {
-    const check = psql({
+    const check = psql(container, {
       user: service,
       database: service,
       password,
@@ -101,8 +110,9 @@ async function postgresAction(action) {
 }
 
 function dynamodbAction(action) {
+  const container = resolveContainer('dynamodb-local', dynamodb);
   const output = docker([
-    'run', '--rm', '-i', '--network', `container:${dynamodb}`,
+    'run', '--rm', '-i', '--network', `container:${container}`,
     '--env', 'AWS_ACCESS_KEY_ID=LocalOnly',
     '--env', 'AWS_SECRET_ACCESS_KEY=LocalOnlySecret',
     '--env', 'AWS_DEFAULT_REGION=us-east-1',
@@ -116,37 +126,35 @@ function dynamodbAction(action) {
   globalThis.console.log(output);
 }
 
-function redisCli(...command) {
-  return exec(redis, ['redis-cli', '-e', '--raw', ...command], {
+function redisCli(container, ...command) {
+  return exec(container, ['redis-cli', '-e', '--raw', ...command], {
     env: { REDISCLI_AUTH: redisPassword },
   });
 }
 
 async function verifyRedis() {
-  await waitFor(() => assert.equal(redisCli('PING'), 'PONG'), 'Redis is not ready');
+  const container = resolveContainer('redis', redis);
+  await waitFor(() => assert.equal(redisCli(container, 'PING'), 'PONG'), 'Redis is not ready');
   const key = `svc03:bootstrap:smoke:${randomUUID()}`;
   const value = 'local-smoke';
-  assert.equal(redisCli('SET', key, value, 'NX', 'EX', '30'), 'OK');
+  assert.equal(redisCli(container, 'SET', key, value, 'NX', 'EX', '30'), 'OK');
   try {
-    assert.equal(redisCli('GET', key), value);
+    assert.equal(redisCli(container, 'GET', key), value);
   } finally {
-    redisCli('DEL', key);
+    redisCli(container, 'DEL', key);
   }
-  assert.equal(redisCli('EXISTS', key), '0');
+  assert.equal(redisCli(container, 'EXISTS', key), '0');
   globalThis.console.log('Redis: PONG and TTL-backed write, read and cleanup verified.');
 }
 
 const actions = { postgres: postgresAction, dynamodb: dynamodbAction, redis: verifyRedis };
-const [action, target, ...extra] = process.argv.slice(2);
+const [action, ...args] = process.argv.slice(2);
+const useCompose = args[0] === 'compose';
+const [target, ...extra] = useCompose ? args.slice(1) : args;
 
 try {
   if (!['init', 'verify'].includes(action) || (target && !Object.hasOwn(actions, target)) || extra.length) {
-    throw new Error('Usage: databases.mjs <init|verify> [postgres|dynamodb|redis]');
-  }
-  for (const container of [postgres, dynamodb, redis]) {
-    if (!/^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(container)) {
-      throw new Error('Container names must start with a letter or digit and contain only letters, digits, dots, hyphens or underscores.');
-    }
+    throw new Error('Usage: databases.mjs <init|verify> [compose] [postgres|dynamodb|redis]');
   }
   for (const name of target ? [target] : Object.keys(actions)) {
     await actions[name](action);
