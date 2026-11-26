@@ -1,4 +1,4 @@
-const serviceTypes = ['standard', 'premium', 'xl'] as const;
+export const serviceTypes = ['standard', 'premium', 'xl'] as const;
 const statuses = [
   'pending_confirmation', 'searching', 'matched', 'no_driver_found', 'cancelled', 'expired',
 ] as const;

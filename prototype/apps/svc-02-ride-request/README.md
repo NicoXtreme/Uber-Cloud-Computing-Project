@@ -21,3 +21,12 @@ npm run test:integration --workspace @uber-prototype/svc-02-ride-request
 ```
 
 The regular tests cover domain rules and transport failures using a loopback socket. The integration tests create unique records and remove them when each test completes. One case writes a record from a SVC-02 process that exits and reads it from a new process. Another holds both concurrent writes until both callers have loaded the same revision, then checks that DynamoDB accepts exactly one write.
+
+## Ride request HTTP API
+
+- `POST /v1/ride-requests` validates the JSON body, requests a quote, creates the request and returns `201` with its relative `Location`.
+- `GET /v1/ride-requests/{id}` validates the ID and returns `200` for the authenticated owner. A missing request or a request owned by another rider returns `404`.
+
+Both operations return request and correlation IDs. Malformed requests return `400` and JSON bodies that fail schema rules return `422`. A POST storage or quote failure returns `503`. A GET storage failure returns `500`, as specified by the current contract. Error responses omit internal causes.
+
+The default server rejects protected calls with `401` until a trusted bearer verifier is wired into the app. Identity comes from the verifier and can never be supplied through a request body or an identity header. The app also requires an injected quote provider for creation. The tests inject both dependencies in code and use real DynamoDB Local for the HTTP round trip. There is no environment switch for test identities or quotes.
