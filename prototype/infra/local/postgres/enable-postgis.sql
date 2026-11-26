@@ -1,0 +1,4 @@
+BEGIN;
+SELECT pg_advisory_xact_lock(44004);
+CREATE EXTENSION IF NOT EXISTS postgis;
+COMMIT;

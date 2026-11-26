@@ -51,6 +51,10 @@ The default host is `127.0.0.1`. To change the host or a port, copy `.env.exampl
 
 `packages/contracts` owns the shared contracts. `packages/shared` is reserved for reusable technical utilities.
 
+## Local databases
+
+The [local database guide](infra/local/README.md) provides standalone Docker commands for PostgreSQL with PostGIS, DynamoDB Local and Redis. After starting them, run `npm run db:init` to bootstrap the local stores and `npm run db:verify` to check them.
+
 ## Collaboration
 
 1. Create a branch from the latest `main`, for example `feat/2-openapi-contracts`.
