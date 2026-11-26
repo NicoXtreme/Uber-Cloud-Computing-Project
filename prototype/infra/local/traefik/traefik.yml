@@ -1,0 +1,22 @@
+entryPoints:
+  web:
+    address: ":8080"
+    forwardedHeaders:
+      insecure: false
+    http:
+      sanitizePath: true
+      encodedCharacters:
+        allowEncodedSlash: false
+        allowEncodedBackSlash: false
+        allowEncodedPercent: false
+        allowEncodedNullCharacter: false
+  health:
+    address: "127.0.0.1:8081"
+
+ping:
+  entryPoint: health
+
+providers:
+  file:
+    filename: /etc/traefik/routes.yml
+    watch: false

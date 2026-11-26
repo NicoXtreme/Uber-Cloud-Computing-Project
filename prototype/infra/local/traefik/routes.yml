@@ -1,0 +1,33 @@
+http:
+  routers:
+    ride-requests:
+      entryPoints: [web]
+      rule: >-
+        (Method(`POST`) && (Path(`/v1/ride-requests`) ||
+        PathRegexp(`^/v1/ride-requests/[^/]+/(confirm|cancel)$`))) ||
+        (Method(`GET`) && PathRegexp(`^/v1/ride-requests/[^/]+$`))
+      middlewares: [remove-client-identity]
+      service: svc-02
+
+  middlewares:
+    remove-client-identity:
+      headers:
+        customRequestHeaders:
+          X-User-Id: ""
+          X-Rider-Id: ""
+          X-Driver-Id: ""
+          X-User-Role: ""
+          X-Authenticated-User: ""
+          X-Forwarded-User: ""
+          X-Forwarded-Email: ""
+          X-Forwarded-Groups: ""
+
+  services:
+    svc-02:
+      loadBalancer:
+        servers:
+          - url: http://svc-02:3002
+        healthCheck:
+          path: /health/ready
+          interval: 5s
+          timeout: 2s
