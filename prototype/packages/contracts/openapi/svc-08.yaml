@@ -1,0 +1,240 @@
+openapi: "3.1.0"
+info:
+  title: "Notifications and Communications"
+  version: "0.1.0"
+  description: "Owns notification preferences, dispatch and delivery history."
+servers:
+  - url: "http://127.0.0.1:3008"
+    description: "Local service origin. Gateway routing is defined separately."
+security:
+  - BearerAuth: []
+paths:
+  "/v1/internal/notifications/otp":
+    post:
+      operationId: "sendOtp"
+      summary: "Send an OTP for authentication"
+      description: "Requires a service JWT. Called synchronously by SVC-01."
+      x-access: "internal"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["userId","channel","code"]
+              properties:
+                userId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                channel:
+                  type: "string"
+                  enum: ["email","sms"]
+                code:
+                  type: "string"
+                  pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["notificationId","status"]
+                properties:
+                  notificationId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["delivered"]
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+        "503":
+          $ref: "./common.yaml#/components/responses/SERVICE_UNAVAILABLE"
+  "/v1/users/{userId}/notification-preferences":
+    get:
+      operationId: "getNotificationPreferences"
+      summary: "Read notification preferences"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "userId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["email","sms","push"]
+                properties:
+                  email:
+                    type: "boolean"
+                  sms:
+                    type: "boolean"
+                  push:
+                    type: "boolean"
+              examples:
+                sample:
+                  value:
+                    email: true
+                    sms: false
+                    push: true
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+    put:
+      operationId: "replaceNotificationPreferences"
+      summary: "Replace notification preferences"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "userId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["email","sms","push"]
+              properties:
+                email:
+                  type: "boolean"
+                sms:
+                  type: "boolean"
+                push:
+                  type: "boolean"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["email","sms","push"]
+                properties:
+                  email:
+                    type: "boolean"
+                  sms:
+                    type: "boolean"
+                  push:
+                    type: "boolean"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/users/{userId}/notifications":
+    get:
+      operationId: "listNotifications"
+      summary: "List notification delivery history"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "userId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+        - $ref: "./common.yaml#/components/parameters/Limit"
+        - $ref: "./common.yaml#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["items","page"]
+                properties:
+                  items:
+                    type: "array"
+                    items:
+                      type: "object"
+                      required: ["id","channel","status","createdAt"]
+                      properties:
+                        id:
+                          $ref: "./common.yaml#/components/schemas/ResourceId"
+                        channel:
+                          type: "string"
+                          enum: ["email","sms","push"]
+                        status:
+                          type: "string"
+                          enum: ["pending","delivered","failed"]
+                        createdAt:
+                          type: "string"
+                          format: "date-time"
+                  page:
+                    $ref: "./common.yaml#/components/schemas/Page"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "./common.yaml#/components/securitySchemes/BearerAuth"

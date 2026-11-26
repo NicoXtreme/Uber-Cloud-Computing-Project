@@ -1,0 +1,473 @@
+openapi: "3.1.0"
+info:
+  title: "Feedback and Safety"
+  version: "0.1.0"
+  description: "Owns ratings, safety incident reports and support cases."
+servers:
+  - url: "http://127.0.0.1:3007"
+    description: "Local service origin. Gateway routing is defined separately."
+security:
+  - BearerAuth: []
+paths:
+  "/v1/trips/{tripId}/ratings":
+    post:
+      operationId: "submitTripRating"
+      summary: "Submit a trip rating"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["score"]
+              properties:
+                score:
+                  type: "integer"
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+                tip:
+                  $ref: "./common.yaml#/components/schemas/Money"
+      responses:
+        "201":
+          description: "Resource created."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","tripId","score"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  score:
+                    type: "integer"
+                    minimum: 1
+                    maximum: 5
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/users/{userId}/rating-summary":
+    get:
+      operationId: "getRatingSummary"
+      summary: "Get aggregate ratings"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "userId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["userId","average","count"]
+                properties:
+                  userId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  average:
+                    type: ["number","null"]
+                    minimum: 1
+                    maximum: 5
+                  count:
+                    type: "integer"
+                    minimum: 0
+              examples:
+                sample:
+                  value:
+                    userId: "user_1"
+                    average: 4.5
+                    count: 2
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/incidents":
+    post:
+      operationId: "reportIncident"
+      summary: "Report a safety incident"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["tripId","category","description"]
+              properties:
+                tripId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                category:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+                description:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        "201":
+          description: "Resource created."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","tripId","category","status"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  category:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+                  status:
+                    type: "string"
+                    enum: ["open","assigned","escalated","resolved"]
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/incidents/{id}":
+    get:
+      operationId: "getIncident"
+      summary: "Get incident status"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","tripId","category","status"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  category:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+                  status:
+                    type: "string"
+                    enum: ["open","assigned","escalated","resolved"]
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/support-tickets":
+    post:
+      operationId: "openSupportTicket"
+      summary: "Open a support case"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["category","description"]
+              properties:
+                tripId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                category:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+                description:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        "201":
+          description: "Resource created."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","category","status"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  category:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+                  status:
+                    type: "string"
+                    enum: ["open","in_progress","resolved"]
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/support-tickets/{id}":
+    get:
+      operationId: "getSupportTicket"
+      summary: "Get support ticket status"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","category","status"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  category:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+                  status:
+                    type: "string"
+                    enum: ["open","in_progress","resolved"]
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/agent/incidents/{id}":
+    patch:
+      operationId: "updateIncident"
+      summary: "Assign, escalate or resolve an incident"
+      x-access: "agent"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["status"]
+              properties:
+                status:
+                  type: "string"
+                  enum: ["assigned","escalated","resolved"]
+                assigneeId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","tripId","category","status"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  category:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+                  status:
+                    type: "string"
+                    enum: ["open","assigned","escalated","resolved"]
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/agent/trips/{tripId}/context":
+    get:
+      operationId: "getTripContext"
+      summary: "Get trip context for a support or safety case"
+      description: "Builds the agent's view from trip data owned by SVC-04."
+      x-access: "agent"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["tripId","riderId","driverId","status"]
+                properties:
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  riderId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+        "503":
+          $ref: "./common.yaml#/components/responses/SERVICE_UNAVAILABLE"
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "./common.yaml#/components/securitySchemes/BearerAuth"

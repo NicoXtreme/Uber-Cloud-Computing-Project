@@ -1,0 +1,524 @@
+openapi: "3.1.0"
+info:
+  title: "Payment and Settlement"
+  version: "0.1.0"
+  description: "Owns payment methods, payment state, invoices and driver settlement."
+servers:
+  - url: "http://127.0.0.1:3006"
+    description: "Local service origin. Gateway routing is defined separately."
+security:
+  - BearerAuth: []
+paths:
+  "/v1/payment-methods":
+    post:
+      operationId: "registerPaymentMethod"
+      summary: "Register a tokenized payment method"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["provider","providerToken"]
+              properties:
+                provider:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+                providerToken:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        "201":
+          description: "Resource created."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","provider","label"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  provider:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+                  label:
+                    type: "string"
+                    minLength: 1
+                    maxLength: 1000
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+    get:
+      operationId: "listPaymentMethods"
+      summary: "List the caller's payment methods"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - $ref: "./common.yaml#/components/parameters/Limit"
+        - $ref: "./common.yaml#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["items","page"]
+                properties:
+                  items:
+                    type: "array"
+                    items:
+                      type: "object"
+                      required: ["id","provider","label"]
+                      properties:
+                        id:
+                          $ref: "./common.yaml#/components/schemas/ResourceId"
+                        provider:
+                          type: "string"
+                          minLength: 1
+                          maxLength: 1000
+                        label:
+                          type: "string"
+                          minLength: 1
+                          maxLength: 1000
+                  page:
+                    $ref: "./common.yaml#/components/schemas/Page"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/payment-methods/{id}":
+    delete:
+      operationId: "deletePaymentMethod"
+      summary: "Remove a payment method"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "id"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "204":
+          description: "Operation completed."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/payments/{tripId}":
+    get:
+      operationId: "getTripPayment"
+      summary: "Get payment status for a trip"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","tripId","amount","status"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  amount:
+                    $ref: "./common.yaml#/components/schemas/Money"
+                  status:
+                    type: "string"
+                    enum: ["pending","authorized","captured","failed","refunded"]
+              examples:
+                sample:
+                  value:
+                    id: "payment_001"
+                    tripId: "trip_001"
+                    amount:
+                      amountMinor: 1870000
+                      currency: "COP"
+                    status: "captured"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/invoices/{tripId}":
+    get:
+      operationId: "getTripInvoice"
+      summary: "Get an invoice or receipt"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","tripId","total","issuedAt"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  total:
+                    $ref: "./common.yaml#/components/schemas/Money"
+                  issuedAt:
+                    type: "string"
+                    format: "date-time"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/payments/{tripId}/cash-confirmation":
+    post:
+      operationId: "confirmCashPayment"
+      summary: "Confirm a cash payment for settlement"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "tripId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+        - $ref: "./common.yaml#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","tripId","amount","status"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  amount:
+                    $ref: "./common.yaml#/components/schemas/Money"
+                  status:
+                    type: "string"
+                    enum: ["pending","authorized","captured","failed","refunded"]
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/payments/{paymentId}/refund":
+    post:
+      operationId: "refundPayment"
+      summary: "Refund a payment"
+      x-access: "support or admin"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "paymentId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+        - $ref: "./common.yaml#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["reason"]
+              properties:
+                reason:
+                  type: "string"
+                  minLength: 1
+                  maxLength: 1000
+                amount:
+                  $ref: "./common.yaml#/components/schemas/Money"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","tripId","amount","status"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  tripId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  amount:
+                    $ref: "./common.yaml#/components/schemas/Money"
+                  status:
+                    type: "string"
+                    enum: ["pending","authorized","captured","failed","refunded"]
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/drivers/{driverId}/earnings":
+    get:
+      operationId: "getDriverEarnings"
+      summary: "Get driver earnings"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "driverId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["driverId","total"]
+                properties:
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  total:
+                    $ref: "./common.yaml#/components/schemas/Money"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/drivers/{driverId}/ledger":
+    get:
+      operationId: "getDriverLedger"
+      summary: "List driver ledger entries"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "driverId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+        - $ref: "./common.yaml#/components/parameters/Limit"
+        - $ref: "./common.yaml#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["items","page"]
+                properties:
+                  items:
+                    type: "array"
+                    items:
+                      type: "object"
+                      required: ["id","tripId","amount","direction","recordedAt"]
+                      properties:
+                        id:
+                          $ref: "./common.yaml#/components/schemas/ResourceId"
+                        tripId:
+                          $ref: "./common.yaml#/components/schemas/ResourceId"
+                        amount:
+                          $ref: "./common.yaml#/components/schemas/Money"
+                        direction:
+                          type: "string"
+                          enum: ["credit","debit"]
+                        recordedAt:
+                          type: "string"
+                          format: "date-time"
+                  page:
+                    $ref: "./common.yaml#/components/schemas/Page"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/webhooks/payment-provider":
+    post:
+      operationId: "acceptPaymentCallback"
+      summary: "Accept an asynchronous payment provider callback"
+      security:
+        - ProviderSignature: []
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["eventId","paymentId","status"]
+              properties:
+                eventId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                paymentId:
+                  $ref: "./common.yaml#/components/schemas/ResourceId"
+                status:
+                  type: "string"
+                  enum: ["authorized","captured","failed","refunded"]
+      responses:
+        "204":
+          description: "Operation completed."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "./common.yaml#/components/securitySchemes/BearerAuth"
+    ProviderSignature:
+      type: "apiKey"
+      in: "header"
+      name: "X-Provider-Signature"
+      description: "Signature of the provider callback. Its algorithm is defined by the provider integration."

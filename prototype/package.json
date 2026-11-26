@@ -13,7 +13,8 @@
     "build": "tsc -b",
     "lint": "eslint .",
     "pretest": "npm run build",
-    "test": "node --test"
+    "test": "node --test",
+    "validate:openapi": "npm run validate:openapi --workspace @uber-prototype/contracts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

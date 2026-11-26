@@ -1,11 +1,11 @@
-# Prototipo local de Uber Ride-Sharing
+# Uber Ride-Sharing local prototype
 
-Monorepositorio con npm workspaces. Cada microservicio tiene su propio paquete, punto de entrada de Express y salida de compilación. Los identificadores y responsabilidades siguen el catálogo de Delivery 2.
+This monorepo uses npm workspaces. Each microservice has its own package, Express entry point and build output. Service identifiers and responsibilities follow Delivery 2.
 
-## Requisitos
+## Requirements
 
-- Node.js 22 a partir de 22.18, o Node.js 24 o superior. npm 10 o superior.
-- Los comandos se ejecutan desde `prototype/`.
+- Node.js 22.18 or a later Node.js 22 release, or Node.js 24 and above. Use npm 10 or above.
+- Run these commands from `prototype/`.
 
 ```sh
 npm ci
@@ -14,21 +14,31 @@ npm run lint
 npm test
 ```
 
-`npm ci` usa el archivo de bloqueo versionado. `npm test` compila los workspaces y comprueba por HTTP las dos rutas operativas de cada servicio usando puertos efímeros.
+`npm ci` uses the committed lockfile. `npm test` builds the workspaces, checks both health endpoints for each service over HTTP using ephemeral ports, and tests the SVC-02 request and response examples.
 
-## Ejecutar un servicio
+## Validate the API contracts
+
+The canonical OpenAPI 3.1 contracts are in [packages/contracts/openapi/](packages/contracts/openapi/README.md). Each service has its own specification and references the shared components. The directory README documents versioning, authentication, errors, tracing, identifiers and pagination.
+
+```sh
+npm run validate:openapi
+```
+
+After installing dependencies, this command checks all eight documents, resolves their local references, and validates their JSON request and response examples against their schemas. Validation runs locally without starting the services.
+
+## Run a service
 
 ```sh
 npm run dev --workspace @uber-prototype/svc-02-ride-request
 ```
 
-El modo de desarrollo reinicia el proceso cuando cambian los archivos TypeScript. Para ejecutar la versión compilada, usa `npm run build` y luego `npm start --workspace @uber-prototype/svc-02-ride-request`. Puedes compilar un único servicio con `npm run build --workspace @uber-prototype/svc-02-ride-request`.
+Development mode restarts the process when TypeScript files change. To run the compiled version, use `npm run build` and then `npm start --workspace @uber-prototype/svc-02-ride-request`. To build a single service, use `npm run build --workspace @uber-prototype/svc-02-ride-request`.
 
-Cada servicio expone `GET /health/live` y `GET /health/ready`. En este esqueleto, ambas rutas indican que el proceso HTTP responde. Por ejemplo, con SVC-02 activo puedes consultar `http://127.0.0.1:3002/health/ready`.
+Every service exposes `GET /health/live` and `GET /health/ready`. In this scaffold both routes indicate that the HTTP process is responding. With SVC-02 running, try `http://127.0.0.1:3002/health/ready`.
 
-El host predeterminado es `127.0.0.1`. Para cambiar el host o un puerto, copia `.env.example` a `.env` en esta carpeta y edita los valores. Las variables del entorno del proceso tienen prioridad.
+The default host is `127.0.0.1`. To change the host or a port, copy `.env.example` to `.env` in this directory and edit the values. Process environment variables take precedence.
 
-| Servicio | Workspace bajo `@uber-prototype/` | Puerto |
+| Service | Workspace under `@uber-prototype/` | Port |
 | --- | --- | ---: |
 | Account and Driver Management | `svc-01-account-and-driver` | 3001 |
 | Ride Request Management | `svc-02-ride-request` | 3002 |
@@ -39,10 +49,10 @@ El host predeterminado es `127.0.0.1`. Para cambiar el host o un puerto, copia `
 | Feedback and Safety | `svc-07-feedback-and-safety` | 3007 |
 | Notifications and Communications | `svc-08-notifications` | 3008 |
 
-`packages/contracts` reserva el paquete para contratos compartidos. `packages/shared` reserva el paquete para utilidades técnicas reutilizables.
+`packages/contracts` owns the shared contracts. `packages/shared` is reserved for reusable technical utilities.
 
-## Colaboración
+## Collaboration
 
-1. Crea una rama desde `main` actualizada, por ejemplo `feat/1-typescript-monorepo`.
-2. Abre un pull request hacia `main` e incluye `Closes #<número>` en la descripción.
-3. Pide la revisión de otro integrante. Integra cambios mediante PR con revisión y los controles ejecutados.
+1. Create a branch from the latest `main`, for example `feat/2-openapi-contracts`.
+2. Open a pull request targeting `main` and include `Closes #<number>` in its description.
+3. Request a teammate's review and run the relevant checks before merging.

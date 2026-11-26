@@ -1,0 +1,234 @@
+openapi: "3.1.0"
+info:
+  title: "Matching and Dispatch"
+  version: "0.1.0"
+  description: "Tracks driver availability, creates offers and assigns a driver."
+servers:
+  - url: "http://127.0.0.1:3003"
+    description: "Local service origin. Gateway routing is defined separately."
+security:
+  - BearerAuth: []
+paths:
+  "/v1/drivers/{driverId}/availability":
+    put:
+      operationId: "setDriverAvailability"
+      summary: "Set the driver's availability"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "driverId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+              required: ["available"]
+              properties:
+                available:
+                  type: "boolean"
+                location:
+                  $ref: "./common.yaml#/components/schemas/Coordinate"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["available"]
+                properties:
+                  available:
+                    type: "boolean"
+                  location:
+                    $ref: "./common.yaml#/components/schemas/Coordinate"
+              examples:
+                sample:
+                  value:
+                    available: true
+                    location:
+                      latitude: 4.6097
+                      longitude: -74.0817
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "422":
+          $ref: "./common.yaml#/components/responses/VALIDATION_FAILED"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/drivers/{driverId}/offers/current":
+    get:
+      operationId: "getCurrentOffer"
+      summary: "Fetch the driver's pending offer"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "driverId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","rideRequestId","driverId","status","expiresAt"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  rideRequestId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["pending","accepted","rejected","expired"]
+                  expiresAt:
+                    type: "string"
+                    format: "date-time"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/offers/{offerId}/accept":
+    post:
+      operationId: "acceptDispatchOffer"
+      summary: "Accept the offer atomically"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "offerId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","rideRequestId","driverId","status","expiresAt"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  rideRequestId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["pending","accepted","rejected","expired"]
+                  expiresAt:
+                    type: "string"
+                    format: "date-time"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+  "/v1/offers/{offerId}/reject":
+    post:
+      operationId: "rejectDispatchOffer"
+      summary: "Reject the dispatch offer"
+      parameters:
+        - $ref: "./common.yaml#/components/parameters/CorrelationId"
+        - name: "offerId"
+          in: "path"
+          required: true
+          description: "Opaque resource identifier."
+          schema:
+            $ref: "./common.yaml#/components/schemas/ResourceId"
+      responses:
+        "200":
+          description: "Successful response."
+          headers:
+            X-Request-ID:
+              $ref: "./common.yaml#/components/headers/RequestId"
+            X-Correlation-ID:
+              $ref: "./common.yaml#/components/headers/CorrelationId"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                required: ["id","rideRequestId","driverId","status","expiresAt"]
+                properties:
+                  id:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  rideRequestId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  driverId:
+                    $ref: "./common.yaml#/components/schemas/ResourceId"
+                  status:
+                    type: "string"
+                    enum: ["pending","accepted","rejected","expired"]
+                  expiresAt:
+                    type: "string"
+                    format: "date-time"
+        "400":
+          $ref: "./common.yaml#/components/responses/BAD_REQUEST"
+        "401":
+          $ref: "./common.yaml#/components/responses/UNAUTHENTICATED"
+        "403":
+          $ref: "./common.yaml#/components/responses/FORBIDDEN"
+        "404":
+          $ref: "./common.yaml#/components/responses/NOT_FOUND"
+        "409":
+          $ref: "./common.yaml#/components/responses/CONFLICT"
+        "429":
+          $ref: "./common.yaml#/components/responses/RATE_LIMITED"
+        "500":
+          $ref: "./common.yaml#/components/responses/INTERNAL_ERROR"
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "./common.yaml#/components/securitySchemes/BearerAuth"
